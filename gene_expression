@@ -1,81 +1,108 @@
+'''In this class I try to manipulate, store and read the data'''
 class GeneExpressionData:
-    def __init__(self, file_path):
+    def __init__(self, file_path):   # initialize with file path
         self.file_path = file_path
-        self.gene_exp = {}
-        self.normal_dict = {}
-        self.hcc_dict = {}
+        self.gene_exp = {}   # a dictionary to keep values of each gene regardless of type(normal or HCC)
+        self.normal_dict = {}   # a dictionary to divide gene expressions corresponding to 'normal' type
+        self.hcc_dict = {}   # a dictionary to divide gene expressions corresponding to 'HCC' type
 
+    '''function to read the file and store data'''
     def read_file(self):
         with open(self.file_path, 'r', encoding='ascii') as file:
-            lines = file.readlines()
-            headers = lines[0].strip().split(',')
+            lines = file.readlines()   # read the whole lines
+            headers = lines[0].strip().split(',')   # assume the first line splitted by ',' as header
+
+            '''in the header, from the third cell to the end, I assumed to gene name(header). each column has
+             expressions and values for each gene. so, I'm going to make an empty list(as values of dictionary) to
+              scan the rows one by one, and based on its index, I allocated them to each gene name. finally,
+              I have columns with a header(gene name)'''
             self.gene_exp = {header: [] for header in headers[2:]}
 
-            for line in lines[1:]:
+            for line in lines[1:]:   # read the file line by line
                 values = line.strip().split(',')
-                sample_type = values[1]
+                sample_type = values[1]   # assume the second column as gene type
+
+                ''' complete the dictionary with headers(keys) and append the values to that empty list '''
                 for key, value in zip(headers[2:], values[2:]):
                     self.gene_exp[key].append(float(value))
 
-                target_dict = self.normal_dict if sample_type == 'normal' else self.hcc_dict
-                for key, value in zip(headers[2:], values[2:]):
-                    if key not in target_dict:
-                        target_dict[key] = []
-                    target_dict[key].append(float(value))
-
+                if sample_type == 'normal':   # check the type
+                    for key, value in zip(headers[2:], values[2:]):
+                        ''' if gene name doesn't exist, make an empty list to put the values in it '''
+                        if key not in self.normal_dict:
+                            self.normal_dict[key] = []   # make a new key
+                        ''' if gene name exists, just append its values '''
+                        self.normal_dict[key].append(float(value))   # if it exists, append it
+                elif sample_type == 'HCC':   # as same as Normal, I checked HCC conditions
+                    for key, value in zip(headers[2:], values[2:]):
+                        if key not in self.hcc_dict:
+                            self.hcc_dict[key] = []   # make a new key
+                        self.hcc_dict[key].append(float(value))   # if it exists, append it
+        ''' return the values. we don't need to return samples but I do it to reassurance '''
         return self.gene_exp, self.normal_dict, self.hcc_dict
+
+'''in this assignment, we need just 3 modules among the whole modules of standard statistics library. so,
+I imported just mean, standard deviation and median to save the memory'''
+
 from statistics import mean, median, stdev
 
+''' make a class in order to do some statistical operations. I made an object(gene_data) of GeneExpressionData class as 
+a parameter of statisticalAnalysis class'''
 class StatisticalAnalysis:
-    def __init__(self, gene_data):
+    def __init__(self, gene_data):   # initializing by gene_data(obj of GeneExpressionData class)
         self.gene_data = gene_data
 
+    '''calculate mean of gene expressions provided that it exists'''
     def calculate_mean(self, gene):
         return mean(self.gene_data.gene_exp[gene]) if gene in self.gene_data.gene_exp else None
 
+    '''calculate standard deviation of gene expressions provided that it exists'''
     def calculate_sd(self, gene):
         return stdev(self.gene_data.gene_exp[gene]) if gene in self.gene_data.gene_exp else None
 
+    '''calculate median of gene expressions provided that it exists'''
     def calculate_median(self, gene):
         return median(self.gene_data.gene_exp[gene]) if gene in self.gene_data.gene_exp else None
 
+    '''calculate differential(The difference between two averages) of gene expressions provided that it exists'''
     def calculate_differential(self, gene):
         if gene in self.gene_data.normal_dict and gene in self.gene_data.hcc_dict:
             normal_mean = mean(self.gene_data.normal_dict[gene])
             hcc_mean = mean(self.gene_data.hcc_dict[gene])
             return normal_mean - hcc_mean
         return None
+
 class AnalysisReport:
     def __init__(self, destination):
         self.destination = destination
 
     def display(self, analysis):
-        # Validate gene name input
+        '''if user enters wrong gene name, after showing an error, return to the first of the loop to do it again'''
         while True:
-            gene = input("Enter the gene name: ").strip()
-            if gene in analysis.gene_data.gene_exp:
+            gene = input("Enter the gene name: ").strip()   # strip() is optional.I put it to reassurance
+            if gene in analysis.gene_data.gene_exp:   # if exists
                 print("Choose the type of analysis:")
-                break
+                break   # end of loop if the input is correct
             else:
                 print("Gene not found. Try again\n")
 
-        # Validate analysis type input
+        # corresponding to the choice, the function calls
         while True:
             print("1. Mean\n2. Median\n3. Standard Deviation\n4. Differential Expression")
             user_input = input("Enter the number corresponding to your user_input: ")
 
-            # Mapping choices to respective functions
+            # Mapping user inputs to respective functions
             if user_input == '1':
-                result = analysis.calculate_mean(gene)
+                result = analysis.calculate_mean(gene)   # calculate mean function calls
                 analysis_type = "Mean"
             elif user_input == '2':
-                result = analysis.calculate_median(gene)
+                result = analysis.calculate_median(gene)   # calculate median function calls
                 analysis_type = "Median"
             elif user_input == '3':
-                result = analysis.calculate_sd(gene)
+                result = analysis.calculate_sd(gene)   # calculate standard deviation function calls
                 analysis_type = "Standard Deviation"
             elif user_input == '4':
-                result = analysis.calculate_differential(gene)
+                result = analysis.calculate_differential(gene)   # calculate differential function calls
                 analysis_type = "Differential Expression (Normal - HCC)"
             else:
                 print("Invalid user_input. Try again.")
@@ -83,17 +110,22 @@ class AnalysisReport:
 
             if result is not None:
                 if self.destination == 'screen':
-                    print(f"{analysis_type} for {gene}: {result:.3f}")
+                    print(f"{analysis_type} for {gene}: {result:.3f}")   # print on the screen
                 else:
-                    with open(self.destination, 'w') as file:
+                    with open(self.destination, 'w') as file:   # write a file into destination
                         file.write(f"{analysis_type} for {gene}: {result:.3f}\n")
-                        print(f"The result was added into: {destination}")
+                        print(f"The result was added into: {self.destination}")
                 break
             else:
                 print(f"{analysis_type} could not be calculated. Gene data might be missing.")
-if __name__ == "__main__":
-    try:
-        # Prompt user for file path and destination
+
+'''from GeneExpressionData file, import GeneExpressionData class, since the class name  is as same as the file name'''
+from GeneExpressionData import GeneExpressionData
+from StatisticalAnalysis import StatisticalAnalysis
+from AnalysisReport import AnalysisReport
+
+if __name__ == "__main__":   # run directly
+    try:   # I used try-except in order to if user enters a wrong path file, the system shows an standard error
         path_file = input("Enter the file path: ")
         destination = input("Enter output destination (type 'screen' for screen or provide file path): ")
 
@@ -101,10 +133,10 @@ if __name__ == "__main__":
         gene_data = GeneExpressionData(path_file)
         gene_data.read_file()
         analysis = StatisticalAnalysis(gene_data)
-        report = AnalysisReport(destination)
+        report = AnalysisReport(destination)  # report is obj of AnalysisReport class that initialized by a destination
 
         # Display analysis report
         report.display(analysis)
 
     except FileNotFoundError as e:
-        print("File not found. Try again.")
+        print(e)
