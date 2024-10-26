@@ -1,0 +1,110 @@
+class GeneExpressionData:
+    def __init__(self, file_path):
+        self.file_path = file_path
+        self.gene_exp = {}
+        self.normal_dict = {}
+        self.hcc_dict = {}
+
+    def read_file(self):
+        with open(self.file_path, 'r', encoding='ascii') as file:
+            lines = file.readlines()
+            headers = lines[0].strip().split(',')
+            self.gene_exp = {header: [] for header in headers[2:]}
+
+            for line in lines[1:]:
+                values = line.strip().split(',')
+                sample_type = values[1]
+                for key, value in zip(headers[2:], values[2:]):
+                    self.gene_exp[key].append(float(value))
+
+                target_dict = self.normal_dict if sample_type == 'normal' else self.hcc_dict
+                for key, value in zip(headers[2:], values[2:]):
+                    if key not in target_dict:
+                        target_dict[key] = []
+                    target_dict[key].append(float(value))
+
+        return self.gene_exp, self.normal_dict, self.hcc_dict
+from statistics import mean, median, stdev
+
+class StatisticalAnalysis:
+    def __init__(self, gene_data):
+        self.gene_data = gene_data
+
+    def calculate_mean(self, gene):
+        return mean(self.gene_data.gene_exp[gene]) if gene in self.gene_data.gene_exp else None
+
+    def calculate_sd(self, gene):
+        return stdev(self.gene_data.gene_exp[gene]) if gene in self.gene_data.gene_exp else None
+
+    def calculate_median(self, gene):
+        return median(self.gene_data.gene_exp[gene]) if gene in self.gene_data.gene_exp else None
+
+    def calculate_differential(self, gene):
+        if gene in self.gene_data.normal_dict and gene in self.gene_data.hcc_dict:
+            normal_mean = mean(self.gene_data.normal_dict[gene])
+            hcc_mean = mean(self.gene_data.hcc_dict[gene])
+            return normal_mean - hcc_mean
+        return None
+class AnalysisReport:
+    def __init__(self, destination):
+        self.destination = destination
+
+    def display(self, analysis):
+        # Validate gene name input
+        while True:
+            gene = input("Enter the gene name: ").strip()
+            if gene in analysis.gene_data.gene_exp:
+                print("Choose the type of analysis:")
+                break
+            else:
+                print("Gene not found. Try again\n")
+
+        # Validate analysis type input
+        while True:
+            print("1. Mean\n2. Median\n3. Standard Deviation\n4. Differential Expression")
+            user_input = input("Enter the number corresponding to your user_input: ")
+
+            # Mapping choices to respective functions
+            if user_input == '1':
+                result = analysis.calculate_mean(gene)
+                analysis_type = "Mean"
+            elif user_input == '2':
+                result = analysis.calculate_median(gene)
+                analysis_type = "Median"
+            elif user_input == '3':
+                result = analysis.calculate_sd(gene)
+                analysis_type = "Standard Deviation"
+            elif user_input == '4':
+                result = analysis.calculate_differential(gene)
+                analysis_type = "Differential Expression (Normal - HCC)"
+            else:
+                print("Invalid user_input. Try again.")
+                continue  # Go back to re-enter user_input
+
+            if result is not None:
+                if self.destination == 'screen':
+                    print(f"{analysis_type} for {gene}: {result:.3f}")
+                else:
+                    with open(self.destination, 'w') as file:
+                        file.write(f"{analysis_type} for {gene}: {result:.3f}\n")
+                        print(f"The result was added into: {destination}")
+                break
+            else:
+                print(f"{analysis_type} could not be calculated. Gene data might be missing.")
+if __name__ == "__main__":
+    try:
+        # Prompt user for file path and destination
+        path_file = input("Enter the file path: ")
+        destination = input("Enter output destination (type 'screen' for screen or provide file path): ")
+
+        # Initialize classes and read data
+        gene_data = GeneExpressionData(path_file)
+        gene_data.read_file()
+        analysis = StatisticalAnalysis(gene_data)
+        report = AnalysisReport(destination)
+
+        # Display analysis report
+        report.display(analysis)
+
+    except FileNotFoundError as e:
+        print("File not found. Try again.")
